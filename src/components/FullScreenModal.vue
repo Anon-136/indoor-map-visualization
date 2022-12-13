@@ -41,9 +41,7 @@ function openModal() {
           enter-to="opacity-100 scale-100" leave="duration-200 ease-in" leave-from="opacity-100 scale-100"
           leave-to="opacity-0 scale-95">
           <DialogPanel class="w-full h-full relative transform overflow-hidden transition-all">
-            <div class="w-full h-full flex flex-col justify-center items-center ">
-              <slot />
-            </div>
+            <slot />
             <button type="button"
               class="absolute bottom-0 right-0 m-4 z-20 inline-flex justify-center rounded-md border border-transparent bg-blue-100 px-4 py-2 text-sm font-medium text-blue-900 hover:bg-blue-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
               @click="closeModal">

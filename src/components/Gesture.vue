@@ -1,12 +1,13 @@
 <script lang="ts" setup>
 import { onMounted, reactive, ref, watchEffect } from 'vue';
-import { Gesture } from '@use-gesture/vanilla'
+import { Gesture, } from '@use-gesture/vanilla'
 import { computed } from '@vue/reactivity';
 
-const target = ref<HTMLImageElement>()
+const target = ref<HTMLDivElement>()
+const img = ref<HTMLImageElement>()
 const image = reactive({ x: 0, y: 0, s: 1, width: 0, height: 0 })
 const click = reactive({ x: 0, y: 0, timeStamp: 0, tap: false })
-const dot = computed(() => {
+const pin = computed(() => {
   return {
     x: (click.x + image.x) + (click.x - image.width / 2) * (image.s - 1),
     y: (click.y + image.y) + (click.y - image.height / 2) * (image.s - 1),
@@ -19,61 +20,90 @@ const SNAP_THRESHOLD = 25
 let shouldCancleTap = false
 
 onMounted(() => {
-  const element = target.value
-  if (!element) return
+  const targetElement = target.value
+  const imageElement = img.value
+  if (!targetElement || !imageElement) return
 
-  element.onload = () => {
-    const gesture = new Gesture(element, {
+  imageElement.onload = () => {
+    new Gesture(targetElement, {
       onDrag({ active, offset: [ox, oy], tap, event: e, timeStamp }) {
-        console.log(tap ? 'tap' : active ? 'drag' : 'wtf');
+        // first && console.log('start', tap ? 'tap' : active ? 'drag' : 'wtf');
         if (tap) {
           // double click
-          console.log(click.timeStamp, timeStamp, timeStamp - click.timeStamp);
           const isDoubleTap = click.timeStamp > 0 && timeStamp - click.timeStamp < DOUBLE_CLICK_THRESHOLD
           click.timeStamp = timeStamp
           if (isDoubleTap) {
             console.log('double tap');
             shouldCancleTap = true
-            image.x = 0
-            image.y = 0
-            image.s = 1
+            if (image.s === 1 && image.x === 0 && image.y === 0) {
+              image.s = 2
+              console.log('zoom in');
+            } else {
+              image.s = 1
+              image.x = 0
+              image.y = 0
+              console.log('zoom out');
+            }
             return
           }
-          console.log('single tap');
+          console.log('a tap');
           setTimeout(() => {
-            console.log('cancleTap', shouldCancleTap);
             if (shouldCancleTap) {
               shouldCancleTap = false
-              console.log('cancle');
+              console.log('cancle single tap');
             } else {
+              console.log('single tap');
               const event = e as PointerEvent
-              console.log('click', event.offsetX, event.offsetY);
-              click.x = event.offsetX
-              click.y = event.offsetY
-              if (!click.tap) click.tap = true
+              if (event.target === imageElement) {
+                console.log('click', event.offsetX, event.offsetY);
+                click.x = event.offsetX
+                click.y = event.offsetY
+                if (!click.tap) click.tap = true
+              }
             }
           }, DOUBLE_CLICK_THRESHOLD)
         } else if (active) {
-          console.log(active, ox, oy);
+          console.log('drag', ox, oy);
           image.x = ox
           image.y = oy
         }
       },
-      onPinch({ offset: [s], active }) {
-        console.log(s);
-
-        if (active) {
-          image.s = s
+      // https://codesandbox.io/s/amazing-tree-sfuexl?file=/src/App.jsx:1205-1700
+      onPinch: ({ origin: [ox, oy], first, movement: [ds], offset: [s], memo }) => {
+        console.log('pinch', s);
+        if (first) {
+          const tx = image.x
+          const ty = image.y
+          const cx = image.width / 2
+          const cy = image.height / 2
+          const rx = ox - (tx + cx)
+          const ry = oy - (ty + cy)
+          memo = [rx, ry, tx, ty]
         }
+        const [rx, ry, tx, ty] = memo
+        image.x = rx - ds * rx + tx
+        image.y = ry - ds * ry + ty
+        image.s = s
+        return memo
       },
+      onWheel: ({ offset: [ox, oy], pinching }) => {
+        if (!pinching) {
+          console.log('wheel', ox, oy);
+          image.x = -ox
+          image.y = -oy
+        }
+      }
     },
       {
         drag: {
-          rubberband: true,
           filterTaps: true,
+          from: () => [image.x, image.y]
         },
         pinch: {
           scaleBounds: { min: 1, max: 8 }
+        },
+        wheel: {
+          from: () => [-image.x, -image.y]
         }
       })
 
@@ -81,22 +111,12 @@ onMounted(() => {
     const setImageSize = () => {
       const oldWidth = image.width
       const oldHeight = image.height
-      const width = element.clientWidth
-      const height = element.clientHeight
+      const width = imageElement.clientWidth
+      const height = imageElement.clientHeight
       image.width = width
       image.height = height
       click.x = click.x * width / oldWidth
       click.y = click.y * height / oldHeight
-      gesture.setConfig({
-        drag: {
-          bounds: {
-            left: -width / 2,
-            right: width / 2,
-            top: -height / 2,
-            bottom: height / 2
-          },
-        },
-      })
       console.log('resize', width, height);
     }
     setImageSize()
@@ -111,16 +131,17 @@ watchEffect(() => {
     image.y = 0
   }
 })
-
 </script>
 
 <template>
-  <div class="relative">
-    <svg class="absolute -translate-x-1/2 -translate-y-full z-30" height="10" width="10"
-      :style="{ transform: `translateX(${dot.x}px) translateY(${dot.y}px)`, display: dot.display }">
-      <circle cx="5" cy="5" r="4" stroke="black" stroke-width="1" fill="red" />
-    </svg>
-    <img ref="target" src="https://picsum.photos/1000" draggable="false" class="touch-none select-none cursor-grab"
-      :style="{ transform: `translateX(${image.x}px) translateY(${image.y}px) scale(${image.s})` }" />
+  <div ref="target" class="w-full h-full flex flex-col justify-center items-center touch-none cursor-grab">
+    <div class="relative">
+      <svg class="absolute z-30" height="10" width="10"
+        :style="{ transform: `translateX(${pin.x - 5}px) translateY(${pin.y - 5}px) scale(${image.s})`, display: pin.display }">
+        <circle cx="5" cy="5" r="4" stroke="black" stroke-width="1" fill="red" />
+      </svg>
+      <img ref="img" src="https://picsum.photos/1000" draggable="false" class="touch-none select-none"
+        :style="{ transform: `translateX(${image.x}px) translateY(${image.y}px) scale(${image.s})` }" />
+    </div>
   </div>
 </template>
