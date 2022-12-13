@@ -34,30 +34,23 @@ function openModal() {
     <Dialog as="div" @close="closeModal" class="relative z-10">
       <TransitionChild as="template" enter="duration-300 ease-out" enter-from="opacity-0" enter-to="opacity-100"
         leave="duration-200 ease-in" leave-from="opacity-100" leave-to="opacity-0">
-        <div class="fixed inset-0 bg-black bg-opacity-25" />
+        <div class="fixed inset-0 bg-gray-800" />
       </TransitionChild>
-      <div class="fixed inset-0 overflow-y-auto">
-        <div class="flex min-h-full items-stretch justify-center p-4 text-center">
-          <TransitionChild as="template" enter="duration-300 ease-out" enter-from="opacity-0 scale-95"
-            enter-to="opacity-100 scale-100" leave="duration-200 ease-in" leave-from="opacity-100 scale-100"
-            leave-to="opacity-0 scale-95">
-            <DialogPanel
-              class="w-full transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
-              <div class="w-full h-full flex flex-col">
-                <div class="flex-1 flex items-center">
-                  <slot />
-                </div>
-                <div class="mt-4">
-                  <button type="button"
-                    class="inline-flex justify-center rounded-md border border-transparent bg-blue-100 px-4 py-2 text-sm font-medium text-blue-900 hover:bg-blue-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-                    @click="closeModal">
-                    Got it, thanks!
-                  </button>
-                </div>
-              </div>
-            </DialogPanel>
-          </TransitionChild>
-        </div>
+      <div class="fixed inset-0">
+        <TransitionChild as="template" enter="duration-300 ease-out" enter-from="opacity-0 scale-95"
+          enter-to="opacity-100 scale-100" leave="duration-200 ease-in" leave-from="opacity-100 scale-100"
+          leave-to="opacity-0 scale-95">
+          <DialogPanel class="w-full h-full relative transform overflow-hidden transition-all">
+            <div class="w-full h-full flex flex-col justify-center items-center ">
+              <slot />
+            </div>
+            <button type="button"
+              class="absolute bottom-0 right-0 m-4 z-20 inline-flex justify-center rounded-md border border-transparent bg-blue-100 px-4 py-2 text-sm font-medium text-blue-900 hover:bg-blue-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              @click="closeModal">
+              Done
+            </button>
+          </DialogPanel>
+        </TransitionChild>
       </div>
     </Dialog>
   </TransitionRoot>
