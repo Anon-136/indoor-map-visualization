@@ -22,82 +22,85 @@ onMounted(() => {
   const element = target.value
   if (!element) return
 
-  // resize image when window resize
-  const setImageSize = () => {
-    const oldWidth = image.width
-    const oldHeight = image.height
-    const width = element.clientWidth
-    const height = element.clientHeight
-    image.width = width
-    image.height = height
-    click.x = click.x * width / oldWidth
-    click.y = click.y * height / oldHeight
-    console.log('resize', width, height);
-  }
-  setImageSize()
-  window.addEventListener('resize', setImageSize)
-
-  const gesture = new Gesture(element, {
-    onDrag({ active, offset: [ox, oy], tap, event: e, timeStamp }) {
-      console.log(tap ? 'tap' : active ? 'drag' : 'wtf');
-      if (tap) {
-        // double click
-        console.log(click.timeStamp, timeStamp, timeStamp - click.timeStamp);
-        const isDoubleTap = click.timeStamp > 0 && timeStamp - click.timeStamp < DOUBLE_CLICK_THRESHOLD
-        click.timeStamp = timeStamp
-        if (isDoubleTap) {
-          console.log('double tap');
-          shouldCancleTap = true
-          image.x = 0
-          image.y = 0
-          image.s = 1
-          return
-        }
-        console.log('single tap');
-        setTimeout(() => {
-          console.log('cancleTap', shouldCancleTap);
-          if (shouldCancleTap) {
-            shouldCancleTap = false
-            console.log('cancle');
-          } else {
-            const event = e as PointerEvent
-            console.log('click', event.offsetX, event.offsetY);
-            click.x = event.offsetX
-            click.y = event.offsetY
-            if (!click.tap) click.tap = true
+  element.onload = () => {
+    const gesture = new Gesture(element, {
+      onDrag({ active, offset: [ox, oy], tap, event: e, timeStamp }) {
+        console.log(tap ? 'tap' : active ? 'drag' : 'wtf');
+        if (tap) {
+          // double click
+          console.log(click.timeStamp, timeStamp, timeStamp - click.timeStamp);
+          const isDoubleTap = click.timeStamp > 0 && timeStamp - click.timeStamp < DOUBLE_CLICK_THRESHOLD
+          click.timeStamp = timeStamp
+          if (isDoubleTap) {
+            console.log('double tap');
+            shouldCancleTap = true
+            image.x = 0
+            image.y = 0
+            image.s = 1
+            return
           }
-        }, DOUBLE_CLICK_THRESHOLD)
-      } else if (active) {
-        console.log(active, ox, oy);
-        image.x = ox
-        image.y = oy
-      }
-    },
-    onPinch({ offset: [s], active }) {
-      console.log(s);
-
-      if (active) {
-        image.s = s
-      }
-    },
-  },
-    {
-      drag: {
-        bounds: {
-          left: -image.width / 2,
-          right: image.width / 2,
-          top: -image.height / 2,
-          bottom: image.height / 2
-        },
-        rubberband: true,
-        filterTaps: true,
+          console.log('single tap');
+          setTimeout(() => {
+            console.log('cancleTap', shouldCancleTap);
+            if (shouldCancleTap) {
+              shouldCancleTap = false
+              console.log('cancle');
+            } else {
+              const event = e as PointerEvent
+              console.log('click', event.offsetX, event.offsetY);
+              click.x = event.offsetX
+              click.y = event.offsetY
+              if (!click.tap) click.tap = true
+            }
+          }, DOUBLE_CLICK_THRESHOLD)
+        } else if (active) {
+          console.log(active, ox, oy);
+          image.x = ox
+          image.y = oy
+        }
       },
-      pinch: {
-        scaleBounds: { min: 1, max: 8 }
-      }
-    })
-  return () => {
-    gesture.destroy()
+      onPinch({ offset: [s], active }) {
+        console.log(s);
+
+        if (active) {
+          image.s = s
+        }
+      },
+    },
+      {
+        drag: {
+          rubberband: true,
+          filterTaps: true,
+        },
+        pinch: {
+          scaleBounds: { min: 1, max: 8 }
+        }
+      })
+
+    // resize image when window resize
+    const setImageSize = () => {
+      const oldWidth = image.width
+      const oldHeight = image.height
+      const width = element.clientWidth
+      const height = element.clientHeight
+      image.width = width
+      image.height = height
+      click.x = click.x * width / oldWidth
+      click.y = click.y * height / oldHeight
+      gesture.setConfig({
+        drag: {
+          bounds: {
+            left: -width / 2,
+            right: width / 2,
+            top: -height / 2,
+            bottom: height / 2
+          },
+        },
+      })
+      console.log('resize', width, height);
+    }
+    setImageSize()
+    window.addEventListener('resize', setImageSize)
   }
 })
 
@@ -109,13 +112,6 @@ watchEffect(() => {
   }
 })
 
-watchEffect(() => {
-  if (image.s === 1) {
-    console.log('zoom snap');
-    image.x = 0
-    image.y = 0
-  }
-}) 
 </script>
 
 <template>
